@@ -77,14 +77,3 @@
     state: present
   when: is_master == 1
 
-- name: 复制 Grafana 部署文件
-  copy:
-    src: "files/grafana-deploy.yaml"
-    dest: "/tmp/grafana-deploy.yaml"
-  when: is_master == 1
-
-- name: 部署 Grafana
-  kubernetes.core.k8s:
-    src: "/tmp/grafana-deploy.yaml"
-    state: present
-  when: is_master == 1
