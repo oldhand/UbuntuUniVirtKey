@@ -1,0 +1,404 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prometheus
+---
+# Grafana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: prometheus
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      tolerations:
+        # 容忍 control-plane 节点的 NoSchedule 污点
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        # 可选：如果节点有其他污点（如 master 节点的旧标签），可一并容忍
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: grafana
+          image: grafana/grafana:9.5.2
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+            - name: grafana-config
+              mountPath: /etc/grafana/provisioning/datasources
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"  # 初始管理员密码，生产环境建议修改
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"  # 禁用注册功能
+            - name: GF_LANG
+              value: "zh-CN"
+      volumes:
+        - name: grafana-storage
+          emptyDir: {}
+        - name: grafana-config
+          configMap:
+            name: grafana-datasources
+---
+# Grafana 数据源配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: prometheus
+data:
+  prometheus.yml: |
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus:9090  # 关联Prometheus Service
+      access: proxy
+      isDefault: true
+---
+# Grafana Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: prometheus
+spec:
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30093
+  type: NodePort  # 如需外部访问可改为NodePort或LoadBalancer
+---
+# 可选：Grafana 控制台仪表盘配置（Kubernetes监控面板）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: prometheus
+data:
+  k8s-cluster-dashboard.json: |
+    {
+      "dashboard": {
+        "annotations": {
+          "list": [
+            {
+              "builtIn": 1,
+              "datasource": {
+                "type": "datasource",
+                "uid": "grafana"
+              },
+              "enable": true,
+              "hide": true,
+              "iconColor": "rgba(0, 211, 255, 1)",
+              "name": "Annotations & Alerts",
+              "type": "dashboard"
+            }
+          ]
+        },
+        "editable": true,
+        "fiscalYearStartMonth": 0,
+        "graphTooltip": 0,
+        "iteration": 1696144218437,
+        "links": [],
+        "liveNow": false,
+        "panels": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "fieldConfig": {
+              "defaults": {
+                "links": []
+              },
+              "overrides": []
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 0
+            },
+            "hiddenSeries": false,
+            "id": 2,
+            "legend": {
+              "avg": false,
+              "current": false,
+              "max": false,
+              "min": false,
+              "show": true,
+              "total": false,
+              "values": false
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+              "alertThreshold": true,
+              "legend": {
+                "displayMode": "list",
+                "placement": "bottom"
+              },
+              "tooltip": {
+                "mode": "multi"
+              }
+            },
+            "percentage": false,
+            "pluginVersion": "9.5.2",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+                },
+                "editorMode": "code",
+                "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) by (instance) * 100)",
+                "interval": "",
+                "legendFormat": "{{instance}}",
+                "range": true,
+                "refId": "A"
+              }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "节点CPU使用率",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+              },
+              "type": "graph",
+              "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+              },
+              "yaxes": [
+                {
+                  "format": "short",
+                  "logBase": 1,
+                  "show": true
+                },
+                {
+                  "format": "short",
+                  "logBase": 1,
+                  "show": true
+                }
+              ],
+              "yaxis": {
+                "align": false
+              }
+          },
+          {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "fieldConfig": {
+              "defaults": {
+                "links": []
+              },
+              "overrides": []
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 0
+            },
+            "hiddenSeries": false,
+            "id": 4,
+            "options": {
+              "legend": {
+                "displayMode": "list",
+                "placement": "bottom"
+              },
+              "tooltip": {
+                "mode": "multi"
+              }
+            },
+          "percentage": false,
+          "pluginVersion": "9.5.2",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+            "targets": [
+              {
+                "datasource": {
+                "type": "prometheus",
+                  "uid": "${datasource}"
+                },
+                "editorMode": "code",
+                "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+                "interval": "",
+                "legendFormat": "{{instance}}",
+                "range": true,
+                "refId": "A"
+              }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "节点内存使用率",
+            "tooltip": {
+              "shared": true,
+              "sort": 0,
+              "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+              "mode": "time",
+              "show": true,
+              "values": []
+            },
+            "yaxes": [
+              {
+                "format": "short",
+                "logBase": 1,
+                "show": true
+              },
+              {
+                "format": "short",
+                "logBase": 1,
+                "show": true
+              }
+            ],
+            "yaxis": {
+              "align": false
+            }
+          }
+        ],
+        "refresh": "10s",
+        "schemaVersion": 38,
+        "style": "dark",
+        "tags": [],
+        "templating": {
+          "list": []
+        },
+        "time": {
+          "from": "now-6h",
+          "to": "now"
+        },
+        "timepicker": {},
+        "timezone": "",
+        "title": "Kubernetes Cluster Monitoring",
+        "uid": "k8s-cluster",
+        "version": 1
+      },
+      "overwrite": true,
+      "inputs": [
+        {
+          "name": "DS_PROMETHEUS",
+          "type": "datasource",
+          "pluginId": "prometheus",
+          "value": "Prometheus"
+        }
+      ]
+    }
+---
+# 可选：部署仪表盘加载器
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-dashboard-loader
+  namespace: prometheus
+  labels:
+    app: grafana-dashboard-loader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-dashboard-loader
+  template:
+    metadata:
+      labels:
+        app: grafana-dashboard-loader
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: loader
+          image: alpine-with-tools:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              MAX_RETRIES=30
+              RETRY_COUNT=0
+              until wget -q --spider --timeout=5 http://grafana:3000; do
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+              echo "Grafana 启动超时，退出"
+              exit 1
+              fi
+              echo "等待 Grafana 启动...（已尝试 $RETRY_COUNT/$MAX_RETRIES）"
+              sleep 10
+              done
+              cat /etc/dashboards/k8s-cluster-dashboard.json > /tmp/dashboard.json
+              echo "开始导入仪表盘..."
+              # 修正 API 端点为 /import，优化响应解析
+              RESPONSE=$(curl -s -w "%{http_code}" -X POST -H "Content-Type: application/json" -u admin:admin \
+                -d @/tmp/dashboard.json http://grafana:3000/api/dashboards/import)
+              STATUS_CODE=${RESPONSE: -3}
+              BODY=${RESPONSE%???}
+              echo "导入响应: $BODY"
+              echo "HTTP 状态码: $STATUS_CODE"
+              if [ "$STATUS_CODE" -ne 200 ] && [ "$STATUS_CODE" -ne 201 ]; then
+              echo "导入失败，状态码: $STATUS_CODE"
+              exit 1
+              fi
+              DASHBOARD_ID=$(echo "$BODY" | jq -r '.dashboardId')
+              if [ -z "$DASHBOARD_ID" ] || [ "$DASHBOARD_ID" = "null" ]; then
+              echo "仪表盘 ID 无效"
+              exit 1
+              fi
+              echo "设置首页，ID: $DASHBOARD_ID"
+              curl -X PUT -H "Content-Type: application/json" -u admin:admin \
+                -d '{"homeDashboardId": '"$DASHBOARD_ID"'}' http://grafana:3000/api/org/preferences
+              tail -f /dev/null
+          volumeMounts:
+            - name: dashboard-config
+              mountPath: /etc/dashboards
+      volumes:
+        - name: dashboard-config
+          configMap:
+            name: grafana-dashboards
+

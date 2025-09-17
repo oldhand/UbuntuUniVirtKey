@@ -1,0 +1,41 @@
+---
+
+- name: 创建临时目录存放YAML文件
+  file:
+    path: "/tmp/yaml"
+    state: directory
+    mode: '0755'
+  run_once: true  # 仅在控制节点执行一次
+
+- name: 复制 virt-tool-centos.yaml 部署文件
+  copy:
+    src: "files/virt-tool-centos.yaml"
+    dest: "/tmp/yaml/virt-tool-centos.yaml"
+  run_once: true  # 仅在控制节点执行一次
+
+- name: Replace Version virt-tool-centos.yaml
+  ansible.builtin.replace:
+    path: "/tmp/yaml/virt-tool-centos.yaml"
+    regexp: 'v1.0.0'
+    replace: '{{ version }}'
+  run_once: true  # 仅在控制节点执行一次
+
+- name: Replace ImagePullPolicy in virt-tool-centos.yaml
+  ansible.builtin.replace:
+    path: "/tmp/yaml/virt-tool-centos.yaml"
+    regexp: 'Always'
+    replace: 'IfNotPresent'
+  run_once: true  # 仅在控制节点执行一次
+
+- name: 删除已存在的 virt-tool-centos.yaml（如果存在）
+  kubernetes.core.k8s:
+    src: "/tmp/yaml/virt-tool-centos.yaml"
+    state: absent
+  run_once: true
+
+
+- name: 部署 virt-tool-centos.yaml
+  kubernetes.core.k8s:
+    src: "/tmp/yaml/virt-tool-centos.yaml"
+    state: present
+  run_once: true  # 仅在控制节点执行一次

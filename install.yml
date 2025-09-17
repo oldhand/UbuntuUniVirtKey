@@ -1,0 +1,20 @@
+---
+- hosts: k8s
+  gather_facts: false
+  roles:
+    # Install packages for k8s
+#    - packages
+#    # Install python packages for k8s
+#    - pips
+#     Install images for k8s
+#    - images
+#    # Install prometheus for k8s
+    - prometheus
+#    # Install volcano for k8s
+#    - volcano
+#    # Install crossplane for k8s
+#    - crossplane
+#    # Install cadvisor for k8s
+#    - cadvisor
+    # Install uni-virt for k8s
+#    - install
