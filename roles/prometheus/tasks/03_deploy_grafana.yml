@@ -122,6 +122,10 @@
             labels:
               app: grafana
           spec:
+            securityContext:
+              runAsUser: 0          # 使用root用户运行容器
+              fsGroup: 472          # Grafana默认用户组ID
+              runAsGroup: 472
             tolerations:
               - key: "node-role.kubernetes.io/control-plane"
                 operator: "Exists"

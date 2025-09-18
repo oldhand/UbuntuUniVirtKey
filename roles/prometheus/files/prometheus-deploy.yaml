@@ -22,6 +22,9 @@ spec:
         app: prometheus
     spec:
       serviceAccountName: prometheus
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
       tolerations:
         # 容忍 control-plane 节点的 NoSchedule 污点
         - key: "node-role.kubernetes.io/control-plane"
@@ -175,6 +178,9 @@ spec:
       labels:
         app: node-exporter
     spec:
+      securityContext:
+        runAsUser: 0
+        privileged: true
       tolerations:
         # 容忍 control-plane 节点的 NoSchedule 污点
         - key: "node-role.kubernetes.io/control-plane"
@@ -225,6 +231,8 @@ spec:
       labels:
         app: kube-state-metrics
     spec:
+      securityContext:
+        runAsUser: 0
       tolerations:
         # 容忍 control-plane 节点的 NoSchedule 污点
         - key: "node-role.kubernetes.io/control-plane"
