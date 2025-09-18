@@ -1,4 +1,6 @@
 ---
-- include_tasks: 01_start_services.yml
-- include_tasks: 02_label_k8s_nodes.yml
-- include_tasks: 03_install_uniVirt.yml
+- include_tasks: 01_install_docker_buildx.yml
+- include_tasks: 02_deploy_kvm_ceph.yml
+- include_tasks: 03_start_services.yml
+- include_tasks: 04_label_k8s_nodes.yml
+- include_tasks: 05_install_uniVirt.yml

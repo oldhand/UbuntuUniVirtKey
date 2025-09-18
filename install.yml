@@ -9,7 +9,7 @@
 #     Install images for k8s
 #    - images
 #    # Install prometheus for k8s
-    - prometheus
+#    - prometheus
 #    # Install volcano for k8s
 #    - volcano
 #    # Install crossplane for k8s
@@ -17,4 +17,4 @@
 #    # Install cadvisor for k8s
 #    - cadvisor
     # Install uni-virt for k8s
-#    - install
+    - install

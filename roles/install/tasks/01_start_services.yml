@@ -1,9 +1,0 @@
----
-- name: Enable and start libvirtd service
-  systemd:
-    name: libvirtd
-    enabled: yes
-    state: started
-    daemon_reload: yes
-
-
