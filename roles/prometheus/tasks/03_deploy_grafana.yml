@@ -17,6 +17,91 @@
             url: http://prometheus:9090
             access: proxy
             isDefault: true
+  run_once: true
+
+- name: 创建 Grafana 存储目录(/data/grafana)
+  ansible.builtin.file:
+    path: /data/grafana
+    state: directory
+    mode: '0777'
+    recurse: yes
+  run_once: true
+
+- name: 清理现有 Grafana 存储资源
+  kubernetes.core.k8s:
+    state: absent
+    definition: "{{ item }}"
+  loop:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: grafana-pvc
+        namespace: prometheus
+    - apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+        name: grafana-pv
+    - apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: grafana-storage
+  run_once: true
+
+
+- name: 创建Grafana存储类
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: grafana-storage
+      provisioner: kubernetes.io/no-provisioner
+      volumeBindingMode: Immediate
+      reclaimPolicy: Retain
+  run_once: true
+
+
+- name: 创建Grafana持久化存储
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+        name: grafana-pv
+        labels:
+          app: grafana
+      spec:
+        capacity:
+          storage: 10Gi
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: grafana-storage
+        hostPath:
+          path: /data/grafana
+          type: DirectoryOrCreate
+        persistentVolumeReclaimPolicy: Retain
+  run_once: true
+
+- name: 创建Grafana持久化存储声明
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: grafana-pvc
+        namespace: prometheus
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: grafana-storage
+  run_once: true
+
 
 - name: 部署Grafana
   kubernetes.core.k8s:
@@ -53,6 +138,8 @@
                 volumeMounts:
                   - name: grafana-datasources
                     mountPath: /etc/grafana/provisioning/datasources
+                  - name: grafana-storage  # 新增存储挂载
+                    mountPath: /var/lib/grafana  # Grafana数据存储路径
                 env:
                   - name: GF_SECURITY_ADMIN_USER
                     value: "admin"  # 固定用户名
@@ -73,7 +160,10 @@
               - name: grafana-datasources
                 configMap:
                   name: grafana-datasources
-
+              - name: grafana-storage  # 关联PVC
+                persistentVolumeClaim:
+                  claimName: grafana-pvc
+  run_once: true
 
 - name: 创建 Grafana NodePort (30093) 服务
   kubernetes.core.k8s:
@@ -92,3 +182,4 @@
             targetPort: 3000
             nodePort: 30093
         type: NodePort
+  run_once: true

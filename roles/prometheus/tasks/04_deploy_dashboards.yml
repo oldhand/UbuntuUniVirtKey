@@ -10,7 +10,7 @@
     grafana_deploy_status.resources[0].status.readyReplicas == 1
   retries: 20  # 重试 20 次
   delay: 10    # 每次间隔 10 秒
-  when: is_master == 1
+  run_once: true
 
 - name: "等待 Grafana API 可访问（检查健康状态）"
   uri:
@@ -22,7 +22,7 @@
   until: grafana_api_health.status == 200
   retries: 15
   delay: 8
-  when: is_master == 1
+  run_once: true
 
 - name: 定义需要导入的Grafana仪表盘
   set_fact:
@@ -31,7 +31,7 @@
         file: "k8s-cluster-monitoring.json"
       - name: "k8s-node-monitoring"
         file: "k8s-node-monitoring.json"
-  when: is_master == 1
+  run_once: true
 
 - name: 复制仪表盘文件到目标节点
   copy:
@@ -40,7 +40,7 @@
   loop: "{{ grafana_dashboards }}"
   loop_control:
     label: "复制 {{ item.name }} 文件"
-  when: is_master == 1
+  run_once: true
 
 - name: 读取仪表盘内容
   slurp:
@@ -50,7 +50,7 @@
   loop_control:
     label: "读取 {{ item.name }} 内容"
   delegate_to: localhost
-  when: is_master == 1
+  run_once: true
 
 - name: 导入仪表盘
   uri:
@@ -73,7 +73,7 @@
   loop: "{{ dashboard_contents.results }}"
   loop_control:
     label: "导入 {{ item.item.name }} 仪表盘"
-  when: is_master == 1
+  run_once: true
   register: import_results
 
 - name: 显示每个仪表盘的导入结果
@@ -90,4 +90,4 @@
   debug:
     msg: |
       ✅ 仪表盘导入完成，访问地址: http://{{ ansible_host }}:30093
-  when: is_master == 1
+  run_once: true
