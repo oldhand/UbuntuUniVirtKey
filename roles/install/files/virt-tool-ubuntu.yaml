@@ -15,6 +15,11 @@ spec:
       labels:
         app: virt-tool-ubuntu
     spec:
+      # 添加容忍配置，允许在控制平面节点调度
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
       nodeSelector:
         doslab/virt.tool.ubuntu: ""
       hostNetwork: true
