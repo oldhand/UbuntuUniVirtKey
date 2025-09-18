@@ -31,7 +31,7 @@
   when: (is_init is defined) and (is_init == 1)
 
 - name: Generate repository metadata
-  shell: sudo dpkg-scanpackages /home/packages /dev/null | gzip -9c > /home/packages/Packages.gz
+  shell: cd /home/packages && sudo dpkg-scanpackages . /dev/null | gzip -9c > /home/packages/Packages.gz
   when: (is_init is defined) and (is_init == 1)
 
 - name: 复制整个repo目录到各节点的/home目录
@@ -52,6 +52,11 @@
   copy:
     src: "local.list"
     dest: "/etc/apt/sources.list.d/local.list"
+
+
+- name: 清理APT缓存
+  apt:
+    autoclean: yes
 
 - name: 执行 apt 更新缓存
   apt:
