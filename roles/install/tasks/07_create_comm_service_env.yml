@@ -30,12 +30,6 @@
   args:
     chdir: "/etc/uniVirt/driverCheck"
 
-- name: Execute create-comm-service.sh script
-  ansible.builtin.command:
-    cmd: "bash create-comm-service.sh"
-  args:
-    chdir: "/etc/uniVirt/sdsctl/grpcservice"
-  when: offline is none
 
 - name: Execute create-comm-service.sh script in offline mode
   ansible.builtin.command:

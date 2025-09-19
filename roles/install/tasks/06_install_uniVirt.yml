@@ -58,3 +58,4 @@
   kubernetes.core.k8s:
     src: "/tmp/yaml/virt-tool-ubuntu.yaml"
     state: present
+  run_once: true  # 仅在控制节点执行一次

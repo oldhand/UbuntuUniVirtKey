@@ -13,7 +13,7 @@ if [ ! -f "images/prometheus-v2.45.0.tar" ]; then
       $PWD/images/images.zip.011 $PWD/images/images.zip.012 $PWD/images/images.zip.013 $PWD/images/images.zip.014 $PWD/images/images.zip.015 \
       $PWD/images/images.zip.016 $PWD/images/images.zip.017 $PWD/images/images.zip.018 $PWD/images/images.zip.019 $PWD/images/images.zip.020 \
       $PWD/images/images.zip.021 $PWD/images/images.zip.022 $PWD/images/images.zip.023 $PWD/images/images.zip.024 $PWD/images/images.zip.025 \
-      $PWD/images/images.zip.026 $PWD/images/images.zip.027 $PWD/images/images.zip.028 > $PWD/images/images.zip
+      $PWD/images/images.zip.026 $PWD/images/images.zip.027 $PWD/images/images.zip.028 $PWD/images/images.zip.029 > $PWD/images/images.zip
   unzip $PWD/images/images.zip -d $PWD/images/
   rm -fr $PWD/images/images.zip
 fi

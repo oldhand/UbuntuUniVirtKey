@@ -8,6 +8,7 @@
       - python3-jmespath
       - qemu-system-x86
       - libvirt-daemon-system
+      - libvirt-dev
       - virtinst
       - libvirt-clients
       - bridge-utils
