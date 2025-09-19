@@ -7,7 +7,7 @@
 
 - name: 复制镜像文件到目标节点
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/buildx-v0.11.2.linux-amd64"
+    src: "{{ playbook_dir }}/files/buildx-v0.11.2.linux-amd64"
     dest: "/usr/libexec/docker/cli-plugins/docker-buildx"
     mode: '0755'
 

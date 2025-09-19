@@ -12,7 +12,7 @@
 
 - name: 部署Go安装包到目标节点
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/go1.19.1.linux-amd64.tar.gz"
+    src: "{{ playbook_dir }}/files/go1.19.1.linux-amd64.tar.gz"
     dest: "/tmp/go1.19.1.linux-amd64.tar.gz"
     mode: 0644
   when: go_installed.rc != 0

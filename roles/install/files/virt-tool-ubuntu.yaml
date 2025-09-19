@@ -28,7 +28,7 @@ spec:
           command:
             - bash
             - 'virtctl-update-stuff.sh'
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           name: virtctl
           securityContext:
             runAsUser: 0
@@ -70,7 +70,7 @@ spec:
           command:
             - bash
             - 'virtlet-update-stuff.sh'
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           name: virtlet
           securityContext:
             runAsUser: 0
@@ -112,7 +112,7 @@ spec:
           command:
             - bash
             - 'watcher.sh'
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           name: libvirtwatcher
           securityContext:
             runAsUser: 0
@@ -154,7 +154,7 @@ spec:
           command:
             - bash
             - 'monitor.sh'
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           name: virtmonitor
           securityContext:
             runAsUser: 0
