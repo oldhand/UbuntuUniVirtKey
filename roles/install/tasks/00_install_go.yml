@@ -1,0 +1,60 @@
+- name: 检查Go是否已安装
+  command: go version
+  register: go_installed
+  failed_when: false
+  changed_when: false
+
+- name: 删除之前的Go文件（如果已安装）
+  file:
+    path: /usr/local/go
+    state: absent
+  when: go_installed.rc == 0
+
+- name: 部署Go安装包到目标节点
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/go1.19.1.linux-amd64.tar.gz"
+    dest: "/tmp/go1.19.1.linux-amd64.tar.gz"
+    mode: 0644
+  when: go_installed.rc != 0
+
+- name: 解压Go安装包
+  ansible.builtin.unarchive:
+    src: "/tmp/go1.19.1.linux-amd64.tar.gz"
+    dest: "/usr/local/"
+    remote_src: yes
+  when: go_installed.rc != 0
+
+- name: 配置GOROOT环境变量
+  lineinfile:
+    path: /root/.bashrc
+    line: 'export GOROOT=/usr/local/go'
+    state: present
+  when: go_installed.rc != 0
+
+- name: 配置GOPATH环境变量
+  lineinfile:
+    path: /root/.bashrc
+    line: 'export GOPATH=$HOME/go'  # 使用$HOME替代ansible_env.HOME
+    state: present
+  when: go_installed.rc != 0
+
+- name: 配置PATH环境变量
+  lineinfile:
+    path: /root/.bashrc
+    line: 'export PATH=/usr/local/go/bin:$HOME/go/bin:$PATH'
+    state: present
+  when: go_installed.rc != 0
+
+- name: 配置GOPROXY环境变量
+  lineinfile:
+    path: /root/.bashrc
+    line: 'export GOPROXY=https://goproxy.cn,direct'
+    state: present
+  when: go_installed.rc != 0
+
+- name: 使环境变量生效
+  shell: . /root/.bashrc
+  become: yes
+  become_user: root
+  changed_when: false
+  when: go_installed.rc != 0
