@@ -10,11 +10,15 @@
 #    - images
 #    # Install prometheus for k8s
 #    - prometheus
+#     Install ceph for k8s
+    - ceph
 #    # Install volcano for k8s
 #    - volcano
 #    # Install crossplane for k8s
 #    - crossplane
 #    # Install cadvisor for k8s
 #    - cadvisor
-    # Install uni-virt for k8s
-    - install
+#     Install uni-virt for k8s
+#    - install
+
+
