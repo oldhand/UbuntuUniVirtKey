@@ -8,16 +8,19 @@ spec:
     image: quay.io/ceph/ceph:v19.2.3
     allowUnsupported: false
   dataDirHostPath: /var/lib/rook
+  cephConfig:
+    global:
+      # 单节点环境：全局默认副本数（新存储池自动继承）
+      osd_pool_default_size: "1"
+      # 单节点环境：全局默认最小副本数（与 size 匹配）
+      osd_pool_default_min_size: "1"
   # 1. 全局调度配置（对所有组件生效）
   placement:
-    # 所有组件的通用调度规则
     all:
       tolerations:
-        # 容忍 master 节点污点（适用于 Kubernetes < 1.24）
         - key: "node-role.kubernetes.io/master"
           operator: "Exists"
           effect: "NoSchedule"
-        # 容忍 control-plane 节点污点（适用于 Kubernetes >= 1.24）
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
@@ -28,24 +31,22 @@ spec:
     enabled: true
     ssl: true
   storage:
-    useAllNodes: true
+    useAllNodes: false
     useAllDevices: false
+    scheduleAlways: true  # 强制在节点就绪/不可调度时都部署 OSD
     config:
-     # 使用目录而非物理磁盘
-      osdsPerDevice: "1"
+      osd_auto_discovery: "false"
+      bluestore_warn_on_old_sig: "false"
+      osd_force_format: "true"  # 强制格式化 /dev/sdb，清除旧数据
       databaseSizeMB: "1024"
       journalSizeMB: "1024"
     nodes:
 {% for node in ceph_nodes %}
     - name: "{{ node.name }}"
       devices:
-{% for dir in node.directories %}
-        # 使用 API 支持的 fullpath 字段指定目录路径
-        - name: "dir-{{ dir | replace('/', '-') }}"
-          fullpath: "{{ dir }}"
+  {% for device in node.devices %}
+        - name: "{{ device }}"
 {% endfor %}
-      # 禁用自动设备发现，只使用我们指定的路径
-      useAllDevices: false
 {% endfor %}
   resources:
     mon:

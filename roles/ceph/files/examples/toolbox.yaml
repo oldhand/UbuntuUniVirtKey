@@ -29,6 +29,7 @@ spec:
               CEPH_CONFIG="/etc/ceph/ceph.conf"
               MON_CONFIG="/etc/rook/mon-endpoints"
               KEYRING_FILE="/etc/ceph/keyring"
+              SECRET_FILE="/var/lib/rook-ceph-mon/secret.keyring"
 
               # create a ceph config file in its default location so ceph/rados tools can be used
               # without specifying any arguments
@@ -69,17 +70,15 @@ spec:
                 done
               }
 
-              # read the secret from an env var (for backward compatibility), or from the secret file
-              ceph_secret=${ROOK_CEPH_SECRET}
-              if [[ "$ceph_secret" == "" ]]; then
-                ceph_secret=$(cat /var/lib/rook-ceph-mon/secret.keyring)
-              fi
+              rm -f ${KEYRING_FILE}
 
-              # create the keyring file
-              cat <<EOF > ${KEYRING_FILE}
-              [${ROOK_CEPH_USERNAME}]
-              key = ${ceph_secret}
-              EOF
+              # 读取原始密钥，仅提取[client.admin]及其后的有效内容
+              # 并删除所有缩进（Ceph不允许keyring中有缩进）
+              sed -n '/\[client.admin\]/,$p' ${SECRET_FILE} | sed 's/^[ \t]*//' > ${KEYRING_FILE}
+
+              # 4. 验证keyring文件（可选，用于调试）
+              echo "Generated keyring content:"
+              cat ${KEYRING_FILE}
 
               # write the initial config file
               write_endpoints
@@ -94,12 +93,6 @@ spec:
             runAsGroup: 2016
             capabilities:
               drop: ["ALL"]
-          env:
-            - name: ROOK_CEPH_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: rook-ceph-admin
-                  key: ceph-username
           volumeMounts:
             - mountPath: /etc/ceph
               name: ceph-config
@@ -111,10 +104,10 @@ spec:
       volumes:
         - name: ceph-admin-secret
           secret:
-            secretName: rook-ceph-admin
+            secretName: rook-ceph-admin-keyring
             optional: false
             items:
-              - key: ceph-secret
+              - key: keyring
                 path: secret.keyring
         - name: mon-endpoint-volume
           configMap:

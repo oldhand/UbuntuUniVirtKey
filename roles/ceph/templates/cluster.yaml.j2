@@ -8,24 +8,39 @@ spec:
     image: quay.io/ceph/ceph:v19.2.3
     allowUnsupported: false
   dataDirHostPath: /var/lib/rook
+  # 1. 全局调度配置（对所有组件生效）
+  placement:
+    # 所有组件的通用调度规则
+    all:
+      tolerations:
+        # 容忍 master 节点污点（适用于 Kubernetes < 1.24）
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        # 容忍 control-plane 节点污点（适用于 Kubernetes >= 1.24）
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
   mon:
     count: 3
-    allowMultiplePerNode: false
+    allowMultiplePerNode: true
   dashboard:
     enabled: true
     ssl: true
   storage:
-    useAllNodes: false
+    useAllNodes: true
     useAllDevices: false
     config:
+     # 使用目录而非物理磁盘
+      osdsPerDevice: "1"
       databaseSizeMB: "1024"
       journalSizeMB: "1024"
     nodes:
 {% for node in ceph_nodes %}
     - name: "{{ node.name }}"
       devices:
-{% for device in node.devices %}
-      - name: "{{ device }}"
+  {% for device in node.devices %}
+        - name: "{{ device }}"
 {% endfor %}
 {% endfor %}
   resources:
@@ -48,4 +63,7 @@ spec:
   crashCollector:
     disable: false
   cleanupPolicy:
-    confirmation: "no"
+    confirmation: ""
+  mgr:
+    count: 3
+    allowMultiplePerNode: true

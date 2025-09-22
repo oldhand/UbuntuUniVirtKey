@@ -10,7 +10,6 @@ spec:
   dataDirHostPath: /var/lib/rook
   # 1. 全局调度配置（对所有组件生效）
   placement:
-    # 所有组件的通用调度规则
     all:
       tolerations:
         - key: "node-role.kubernetes.io/master"
@@ -26,18 +25,23 @@ spec:
     enabled: true
     ssl: true
   storage:
-    useAllNodes: false
+    useAllNodes: true
     useAllDevices: false
     config:
-     # 使用目录而非物理磁盘
-      osdsPerDevice: "1"
+      osd_auto_discovery: "false"
+      bluestore_warn_on_old_sig: "false"
       databaseSizeMB: "1024"
       journalSizeMB: "1024"
     nodes:
-    - name: "ubuntu2204kube01"
-      directories:
-        - name: "/data/ceph"
-      useAllDevices: false
+{% for node in ceph_nodes %}
+    - name: "{{ node.name }}"
+      devices:
+  {% for device in node.devices %}
+        - name: "{{ device }}"
+        config:
+          osdsPerDevice: "1"
+{% endfor %}
+{% endfor %}
   resources:
     mon:
       requests:

@@ -1,22 +1,57 @@
 ---
-- name: 创建 ceph 存放目录
-  file:
-    path: "/data/ceph"
-    state: directory
-    mode: '0755'
+- name: 删除cephblockpools类型的所有CR实例
+  kubernetes.core.k8s:
+    kind: CephBlockPool
+    namespace: "{{ ceph_namespace }}"
+    state: absent
+    all: true  # 删除该命名空间下所有CephBlockPool实例
+    wait: yes
+    wait_timeout: 180  # 延长超时时间
+  ignore_errors: yes
+  run_once: yes
 
-- name: 创建 ceph1 存放目录
-  file:
-    path: "/data/ceph1"
-    state: directory
-    mode: '0755'
+# 2. 移除CRD的Finalizer（若存在阻塞）
+- name: 移除cephblockpools CRD的Finalizer
+  kubernetes.core.k8s:
+    kind: CustomResourceDefinition
+    name: cephblockpools.ceph.rook.io
+    state: present  # 用present执行patch操作
+    definition:
+      metadata:
+        finalizers: null  # 清空Finalizer
+  ignore_errors: yes
+  run_once: yes
 
-- name: 递归删除 ceph 存放目录（/var/lib/rook）
-  file:
-    path: "/var/lib/rook"   # 要删除的目录路径
-    state: absent           # 表示“删除”状态（自动递归删除所有内容）
-    force: yes              # 可选：强制删除（若目录内有只读文件，避免报错）
-  become: yes
+# 3. 最终删除CRD
+- name: 删除cephblockpools CRD
+  kubernetes.core.k8s:
+    kind: CustomResourceDefinition
+    name: cephblockpools.ceph.rook.io
+    state: absent
+    wait: yes
+    wait_timeout: 180  # 延长超时时间，确保清理完成
+  ignore_errors: yes
+  run_once: yes
+
+- name: 删除Rook相关ReplicaSet
+  kubernetes.core.k8s:
+    kind: ReplicaSet
+    namespace: "{{ ceph_namespace }}"
+    state: absent
+    wait: yes
+  ignore_errors: yes
+  run_once: yes  # 只在控制节点执行一次
+
+- name: 删除Rook相关DaemonSet
+  kubernetes.core.k8s:
+    kind: DaemonSet
+    namespace: "{{ ceph_namespace }}"
+    state: absent
+    wait: yes
+  ignore_errors: yes
+  run_once: yes  # 只在控制节点执行一次
+
+
 
 - name: 清理 ceph 命名空间下的所有 Deployment
   kubernetes.core.k8s:
@@ -28,25 +63,6 @@
   run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
   ignore_errors: true
 
-- name: 清理 ceph 命名空间下的所有 Service
-  kubernetes.core.k8s:
-    kind: Service
-    namespace: "{{ ceph_namespace }}"
-    state: absent
-    wait: yes
-    all: true  # 删除该命名空间下所有 Service
-  run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
-  ignore_errors: true
-
-- name: 清理 ceph 命名空间下的所有 DaemonSet
-  kubernetes.core.k8s:
-    kind: DaemonSet
-    namespace: "{{ ceph_namespace }}"
-    state: absent
-    wait: yes
-    all: true  # 删除该命名空间下所有 DaemonSet
-  run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
-  ignore_errors: true
 
 - name: 清理 ceph 命名空间下的所有 Pod
   kubernetes.core.k8s:
@@ -58,56 +74,77 @@
   run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
   ignore_errors: true
 
-- name: 清理 ceph 命名空间下的所有 ConfigMap
+- name: 清理 ceph 命名空间下的所有 Job
   kubernetes.core.k8s:
-    kind: ConfigMap
+    kind: Job
     namespace: "{{ ceph_namespace }}"
     state: absent
     wait: yes
-    all: true  # 删除该命名空间下所有 ConfigMap
+    all: true  # 删除该命名空间下所有 Job
   run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
   ignore_errors: true
 
-#- name: 清理 ceph 命名空间下的所有 Secret
-#  kubernetes.core.k8s:
-#    kind: Secret
-#    namespace: "{{ ceph_namespace }}"
-#    state: absent
-#    wait: yes
-#    all: true  # 删除该命名空间下所有 Secret
-#  run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
-#  ignore_errors: true
-#
-#- name: 清理 ceph 命名空间下的所有 CephBlockPool
-#  kubernetes.core.k8s:
-#    kind: CephBlockPool
-#    namespace: "{{ ceph_namespace }}"
-#    state: absent
-#    wait: yes
-#    all: true  # 删除该命名空间下所有 CephBlockPool
-#  run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
-#  ignore_errors: true
-#
-#- name: 清理 ceph 命名空间下的所有 CephCluster
-#  kubernetes.core.k8s:
-#    kind: CephCluster
-#    namespace: "{{ ceph_namespace }}"
-#    state: absent
-#    wait: yes
-#    all: true  # 删除该命名空间下所有 CephCluster
-#  run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
-#  ignore_errors: true
 
+- name: 清理 ceph 命名空间下的所有 Service
+  kubernetes.core.k8s:
+    kind: Service
+    namespace: "{{ ceph_namespace }}"
+    state: absent
+    wait: yes
+    all: true  # 删除该命名空间下所有 Service
+  run_once: true  # 仅在控制节点执行（与现有部署逻辑一致）
+  ignore_errors: true
 
-#- name: 删除 ceph 命名空间
-#  kubernetes.core.k8s:
-#    name: "{{ ceph_namespace }}"
-#    kind: Namespace
-#    api_version: v1
-#    wait: yes
-#    state: absent
-#  run_once: true
+- name: 清理节点上的Rook数据目录
+  file:
+    path: "{{ item }}"
+    state: absent
+    force: yes
+  loop:
+    - /var/lib/rook
+    - /etc/rook
+    - /var/run/ceph
+    - /var/log/ceph
+    - /tmp/rook
 
+- name: 清理完成提示
+  debug:
+    msg: "Rook Ceph集群清理完成，所有相关资源和数据已移除"
+  run_once: yes  # 只在控制节点显示一次
+
+- name: 分发 Rook 部署文件
+  copy:
+    src: "examples/"
+    dest: "/tmp/rook-deploy/"
+    mode: '0644'
+
+- name: 清理 ceph crds.yaml
+  kubernetes.core.k8s:
+    src: "/tmp/rook-deploy/crds.yaml"
+    state: absent
+    wait: yes
+  run_once: true
+
+- name: 清理 ceph common.yaml
+  kubernetes.core.k8s:
+    src: "/tmp/rook-deploy/common.yaml"
+    state: absent
+    wait: yes
+  run_once: true
+
+- name: 清理 ceph csi-operator.yaml
+  kubernetes.core.k8s:
+    src: "/tmp/rook-deploy/csi-operator.yaml"
+    state: absent
+    wait: yes
+  run_once: true
+
+- name: 清理 ceph operator.yaml
+  kubernetes.core.k8s:
+    src: "/tmp/rook-deploy/operator.yaml"
+    state: absent
+    wait: yes
+  run_once: true
 
 - name: 创建 ceph 命名空间
   kubernetes.core.k8s:
@@ -115,13 +152,10 @@
     kind: Namespace
     api_version: v1
     state: present
+    wait: yes
   run_once: true
 
-- name: 分发 Rook 部署文件
-  copy:
-    src: "examples/"
-    dest: "/tmp/rook-deploy/"
-    mode: '0644'
+
 
 - name: 复制 ceph serviceAccount 部署文件
   copy:
@@ -133,6 +167,7 @@
   kubernetes.core.k8s:
     src: "/tmp/rook-deploy/ceph-serviceaccount.yaml"
     state: present
+    wait: yes
   run_once: true
 
 - name: 部署 ceph crds.yaml
@@ -153,13 +188,11 @@
     state: present
   run_once: true
 
-
 - name: 部署 ceph operator.yaml
   kubernetes.core.k8s:
     src: "/tmp/rook-deploy/operator.yaml"
     state: present
   run_once: true
-
 
 - name: 等待 Rook Operator 就绪
   shell: kubectl wait --for=condition=ready pod -l app=rook-ceph-operator -n {{ ceph_namespace }}  --timeout=300s
@@ -167,15 +200,22 @@
 
 - name: 生成 Ceph 集群配置文件
   template:
-    src: cluster-path-single-node.j2
+    src: cluster-single-node.j2
     dest: /tmp/rook-deploy/cluster.yaml
     mode: '0644'
   run_once: true
 
-- name: 部署 Ceph 集群
-  shell: kubectl apply -f /tmp/rook-deploy/cluster.yaml
+- name: 清理 Ceph 集群
+  kubernetes.core.k8s:
+    src: "/tmp/rook-deploy/cluster.yaml"
+    state: absent
   run_once: true
 
+- name: 部署 Ceph 集群
+  kubernetes.core.k8s:
+    src: "/tmp/rook-deploy/cluster.yaml"
+    state: present
+  run_once: true
 
 - name: "检测 Rook-Ceph Operator 就绪状态"
   kubernetes.core.k8s_info:
