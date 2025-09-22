@@ -46,6 +46,11 @@
   delay: 10
   run_once: true
 
+- name: 分发 Rook 部署文件
+  copy:
+    src: "examples/"
+    dest: "/tmp/rook-deploy/"
+    mode: '0644'
 
 - name: 部署 ceph toolbox.yaml
   kubernetes.core.k8s:
@@ -71,6 +76,18 @@
     toolbox_pod_name: "{{ toolbox_pod.resources[0].metadata.name }}"
   run_once: true
 
+
+- name: 生成 ceph 管理平台密码为 "!qaz2Wsx"
+  shell: kubectl exec -n rook-ceph {{ toolbox_pod_name }} -- bash -c "echo !qaz2Wsx > /tmp/dashboard-admin-password.txt"
+  register: ceph_health
+  run_once: true
+
+- name: 重置 ceph 管理平台(admin)的登录密码
+  shell: kubectl exec -n rook-ceph {{ toolbox_pod_name }} -- ceph dashboard ac-user-set-password admin -i /tmp/dashboard-admin-password.txt
+  register: ceph_health
+  run_once: true
+
+
 - name: 验证Ceph集群健康度
   shell: kubectl -n rook-ceph exec {{ toolbox_pod_name }} -- ceph health
   register: ceph_health
@@ -79,15 +96,17 @@
 - name: 显示最终验证结果
   debug:
     msg: |
-      ==============================================
       Ceph集群部署与验证总结：
-      1. Ceph核心组件：✅ 全部就绪
-      2. Toolbox部署：{% if toolbox_deploy.changed %}✅ 成功创建{% else %}ℹ️ 已存在{% endif %}
+      1. Ceph核心组件：全部就绪
+      2. Toolbox部署：{% if toolbox_pod.changed %} 成功创建{% else %} 已存在{% endif %}
       3. Ceph健康度：{{ ceph_health.stdout }}
-      {% if 'HEALTH_OK' in ceph_health.stdout %}
-      最终状态：✅ Ceph集群部署成功且健康
-      {% else %}
-      最终状态：❌ Ceph集群存在异常
-      {% endif %}
-      ==============================================
+  run_once: true
+
+
+- name: 验证操作
+  debug:
+    msg: |
+      kubectl exec -it -n rook-ceph {{ toolbox_pod_name }} -- bash
+      1. ceph health
+      2. ceph osd tree
   run_once: true
